@@ -1,28 +1,64 @@
 <?php
+// database/seeders/UserSeeder.php
 
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Créer un utilisateur de test
-        User::factory()->create([
-            'name' => 'Ibrahim',
-            'email' => 'ik@example.com',
-            'password' => bcrypt('password'),
+        // Admin
+        $admin = User::create([
+            'name' => 'Admin CampusHub',
+            'email' => 'admin@campushub.fr',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+            'email_verified_at' => now(),
         ]);
 
-        // Créer 9 utilisateurs avec des données fake
-        User::factory(10)->create();
+        // Update profile info
+        $admin->info->update([
+            'bio' => 'Administrateur de la plateforme CampusHub',
+            'profile_completion' => 50,
+        ]);
+
+        // Étudiant
+        $student = User::create([
+            'name' => 'Jean Dupont',
+            'email' => 'jean.dupont@campushub.fr',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'email_verified_at' => now(),
+        ]);
+
+        $student->info->update([
+            'program' => 'Master Informatique',
+            'year' => 2,
+            'campus' => 'Paris',
+            'skills' => ['PHP', 'Laravel', 'JavaScript', 'React'],
+            'profile_completion' => 70,
+        ]);
+
+        // Alumni
+        $alumni = User::create([
+            'name' => 'Marie Martin',
+            'email' => 'marie.martin@campushub.fr',
+            'password' => Hash::make('password'),
+            'role' => 'alumni',
+            'email_verified_at' => now(),
+        ]);
+
+        $alumni->info->update([
+            'program' => 'Master Informatique',
+            'graduation_year' => 2022,
+            'campus' => 'Lyon',
+            'skills' => ['Python', 'Django', 'Machine Learning'],
+            'linkedin_url' => 'https://linkedin.com/in/marie-martin',
+            'profile_completion' => 85,
+        ]);
     }
 }

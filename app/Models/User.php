@@ -7,17 +7,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasUuids;
+    use HasFactory, Notifiable, HasUuids;
 
     protected $fillable = [
         'name',
         'email',
         'password',
         'role',
+        'last_login_at',
     ];
 
     protected $hidden = [
@@ -25,11 +25,14 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'last_login_at' => 'datetime',
-        'password' => 'hashed',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
 
     /**
      * Relation one-to-one avec UserInfo
@@ -46,7 +49,7 @@ class User extends Authenticatable
     {
         static::created(function ($user) {
             $user->info()->create([
-                'profile_completion' => 20, // Nom + email = 20%
+                'profile_completion' => 20, // Base: nom + email
             ]);
         });
     }

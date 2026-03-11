@@ -1,31 +1,29 @@
 <?php
 // routes/api.php
 
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InvitationController;
 use Illuminate\Support\Facades\Route;
 
 // ========== PUBLIC ROUTES ==========
 
-// CSRF Cookie (requis pour Sanctum stateful)
-Route::get('/sanctum/csrf-cookie', function () {
-    return response()->json(['message' => 'CSRF cookie set']);
-});
+// Vérifier invitation (public)
+Route::post('/invitations/verify', [InvitationController::class, 'verify']);
 
-// Auth routes
+// Auth
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 // ========== PROTECTED ROUTES ==========
 
 Route::middleware(['auth:sanctum'])->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'user']); // ✅ /me au lieu de /user
+    Route::get('/me', [AuthController::class, 'user']);
     
-    // Users (CRUD protégé)
-    Route::get('/users', [UserController::class, 'index']); // Liste (admin only)
-    Route::get('/users/{id}', [UserController::class, 'show']); // Voir un user
-    Route::patch('/users/{id}', [UserController::class, 'update']); // Modifier
-    Route::delete('/users/{id}', [UserController::class, 'destroy']); // Supprimer (admin only)
+    // Invitations (Admin only - vérification dans controller)
+    Route::get('/invitations', [InvitationController::class, 'index']);
+    Route::post('/invitations', [InvitationController::class, 'store']);
+    Route::post('/invitations/{id}/resend', [InvitationController::class, 'resend']);
+    Route::delete('/invitations/{id}', [InvitationController::class, 'destroy']);
 });

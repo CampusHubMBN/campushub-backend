@@ -35,12 +35,17 @@ class UserInfo extends Model
         'profile_completion',
     ];
 
-    protected $casts = [
-        'skills' => 'array',
-        'languages' => 'array',
-        'reputation_points' => 'integer',
-        'profile_completion' => 'integer',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'skills' => 'array',
+            'languages' => 'array',
+            'reputation_points' => 'integer',
+            'profile_completion' => 'integer',
+            'year' => 'integer',
+            'graduation_year' => 'integer',
+        ];
+    }
 
     /**
      * Relation inverse avec User
@@ -59,7 +64,7 @@ class UserInfo extends Model
     }
 
     /**
-     * Calculer automatiquement profile_completion
+     * Calculer profile_completion automatiquement
      */
     public function calculateProfileCompletion(): int
     {
