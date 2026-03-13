@@ -33,35 +33,40 @@ class UserController extends Controller
         }
 
         // Update user (auth fields)
-        $userValidated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-        ]);
+        // $userValidated = $request->validate([
+        //     'name' => 'sometimes|string|max:255',
+        // ]);
 
-        if (!empty($userValidated)) {
-            $user->update($userValidated);
-        }
+        // if (!empty($userValidated)) {
+        //     $user->update($userValidated);
+        // }
 
-        // Update user_info (profil fields)
-        $infoValidated = $request->validate([
+        // Validation
+        $validated = $request->validate([
             'bio' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:20',
             'linkedin_url' => 'nullable|url|max:255',
             'github_url' => 'nullable|url|max:255',
             'website_url' => 'nullable|url|max:255',
+            'cv_url' => 'nullable|url|max:255',
             'skills' => 'nullable|array',
-            'skills.*' => 'string',
+            'skills.*' => 'string|max:50',
             'languages' => 'nullable|array',
-            'program' => 'nullable|string|max:255',
+            'languages.*.language' => 'required|string',
+            'languages.*.level' => 'required|string',
+            'program' => 'nullable|string|max:100',
             'year' => 'nullable|integer|min:1|max:5',
+            'graduation_year' => 'nullable|integer|min:2020|max:2030',
+            'specialization' => 'nullable|string|max:100',
             'campus' => 'nullable|string|max:100',
         ]);
 
-        if (!empty($infoValidated)) {
-            $user->info()->update($infoValidated);
+        if ($user->info) {
+            $user->info->update($validated);
             
             // Recalculer profile_completion
-            $completion = $user->info->calculateProfileCompletion();
-            $user->info()->update(['profile_completion' => $completion]);
+            $profileCompletion = $user->info->calculateProfileCompletion();
+            $user->info->update(['profile_completion' => $profileCompletion]);
         }
 
         // Reload
@@ -85,23 +90,33 @@ class UserController extends Controller
             'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Supprimer ancien avatar
-        if ($user->info->avatar_url) {
-            Storage::disk('public')->delete($user->info->avatar_url);
+         // Upload fichier
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            
+            // Stocker dans storage/app/public/avatars
+            $path = $file->store('avatars', 'public');
+            
+            // URL publique
+            $url = asset('storage/' . $path);
+            
+            // Update user_info
+            if ($user->info) {
+                // Supprimer ancien avatar si existe
+                if ($user->info->avatar_url) {
+                    $oldPath = str_replace(asset('storage/'), '', $user->info->avatar_url);
+                    \Storage::disk('public')->delete($oldPath);
+                }
+                
+                $user->info->update(['avatar_url' => $url]);
+            }
+
+            return response()->json([
+                'message' => 'Avatar uploadé avec succès',
+                'avatar_url' => $url,
+            ]);
         }
-
-        // Stocker nouveau
-        $path = $request->file('avatar')->store('avatars', 'public');
-
-        // Update user_info
-        $user->info()->update(['avatar_url' => $path]);
-
-        // Recalculer completion
-        $completion = $user->info->calculateProfileCompletion();
-        $user->info()->update(['profile_completion' => $completion]);
-
-        $user->load('info');
-
-        return new UserResource($user);
+        
+        return response()->json(['message' => 'Aucun fichier trouvé'], 400);
     }
 }
