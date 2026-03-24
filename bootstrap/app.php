@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Illuminate\Session\Middleware\StartSession::class,
         ]);
+        // revoker les comptes suspendus
+        $middleware->alias([
+            'not.suspended' => \App\Http\Middleware\CheckNotSuspended::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Gérer erreurs auth pour API (retourner JSON 401)
@@ -32,4 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
             return redirect()->guest(route('login'));
         });
     })
+    // ->withMiddleware(function (Middleware $middleware) {
+    //     $middleware->alias([
+    //         'not.suspended' => \App\Http\Middleware\CheckNotSuspended::class,
+    //     ]);
+    // })
     ->create();

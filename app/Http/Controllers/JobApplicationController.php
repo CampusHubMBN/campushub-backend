@@ -6,11 +6,14 @@ namespace App\Http\Controllers;
 use App\Http\Resources\JobApplicationResource;
 use App\Models\Job;
 use App\Models\JobApplication;
+use App\Traits\PublishesRedisEvents;
+use App\Enums\RealtimeEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class JobApplicationController extends Controller
 {
+    use PublishesRedisEvents;
     /**
      * Apply to a job (students/alumni only)
      */
@@ -82,27 +85,107 @@ class JobApplicationController extends Controller
             }
         }
 
-        // Create application
+         // Create application
         $application = JobApplication::create([
-            'job_id' => $job->id,
-            'user_id' => $user->id,
-            'cover_letter' => $validated['cover_letter'],
-            'cv_url' => $cvUrl,
+            'job_id'               => $job->id,
+            'user_id'              => $user->id,
+            'cover_letter'         => $validated['cover_letter'],
+            'cv_url'               => $cvUrl,
             'additional_documents' => $additionalDocs,
-            'status' => 'pending',
+            'status'               => 'pending',
         ]);
 
-        // Increment job applications count
         $job->incrementApplications();
-
-        // Load relations
         $application->load(['job', 'user.info']);
 
+        // ← Ajouter après le load
+        $this->publishEvent(RealtimeEvent::APPLICATION_CREATED, [
+            'applicationId' => $application->id,
+            'applicantId'   => $user->id,
+            'jobId'         => $job->id,
+            'jobTitle'      => $job->title,
+            'companyName'   => $job->company->name ?? '',
+        ]);
+
         return response()->json([
-            'message' => 'Candidature envoyée avec succès !',
+            'message'     => 'Candidature envoyée avec succès !',
             'application' => new JobApplicationResource($application),
         ], 201);
+
+        // Create application
+        // $application = JobApplication::create([
+        //     'job_id' => $job->id,
+        //     'user_id' => $user->id,
+        //     'cover_letter' => $validated['cover_letter'],
+        //     'cv_url' => $cvUrl,
+        //     'additional_documents' => $additionalDocs,
+        //     'status' => 'pending',
+        // ]);
+
+        // // Increment job applications count
+        // $job->incrementApplications();
+
+        // // Load relations
+        // $application->load(['job', 'user.info']);
+
+        // return response()->json([
+        //     'message' => 'Candidature envoyée avec succès !',
+        //     'application' => new JobApplicationResource($application),
+        // ], 201);
     }
+
+    /**
+     * Update user's application
+     */
+
+    // public function updateStatus(Request $request, $id)
+    // {
+    //     $application = JobApplication::with('job')->findOrFail($id);
+    //     $user = $request->user();
+
+    //     if ($user->role !== 'admin' && $application->job->posted_by !== $user->id) {
+    //         return response()->json(['message' => 'Non autorisé'], 403);
+    //     }
+
+    //     $validated = $request->validate([
+    //         'status'       => 'required|in:pending,reviewed,shortlisted,interview,rejected,accepted',
+    //         'notes'        => 'nullable|string|max:1000',
+    //         'interview_at' => 'nullable|date|after:now',
+    //     ]);
+
+    //     $application->update([
+    //         'status' => $validated['status'],
+    //         'notes'  => $validated['notes'] ?? $application->notes,
+    //     ]);
+
+    //     if ($validated['status'] === 'reviewed' && !$application->reviewed_at) {
+    //         $application->update(['reviewed_at' => now()]);
+    //     }
+
+    //     if ($validated['status'] === 'interview' && isset($validated['interview_at'])) {
+    //         $application->update(['interview_at' => $validated['interview_at']]);
+    //     }
+
+    //     if (in_array($validated['status'], ['accepted', 'rejected']) && !$application->responded_at) {
+    //         $application->update(['responded_at' => now()]);
+    //     }
+
+    //     $application->load(['job', 'user.info']);
+
+    //     // ← Ajouter après le load
+    //     // NestJS écoute 'application.updated' → onApplicationUpdated()
+    //     $this->publishEvent('application.updated', [
+    //         'applicationId' => $application->id,
+    //         'applicantId'   => $application->user_id,
+    //         'jobTitle'      => $application->job->title,
+    //         'newStatus'     => $validated['status'],
+    //     ]);
+
+    //     return response()->json([
+    //         'message'     => 'Statut mis à jour avec succès',
+    //         'application' => new JobApplicationResource($application),
+    //     ]);
+    // }
 
     /**
      * Get user's applications (own applications)
@@ -202,6 +285,13 @@ class JobApplicationController extends Controller
         }
 
         $application->load(['job', 'user.info']);
+
+        $this->publishEvent(RealtimeEvent::APPLICATION_STATUS_UPDATED, [
+            'applicationId' => $application->id,
+            'applicantId'   => $application->user_id,
+            'jobTitle'      => $application->job->title,
+            'newStatus'     => $validated['status'],
+        ]);
 
         return response()->json([
             'message' => 'Statut mis à jour avec succès',

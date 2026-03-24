@@ -25,20 +25,26 @@ class Comment extends Model
 
     protected static function booted(): void
     {
-        // Incrémenter comments_count sur le post
         static::created(function (Comment $comment) {
-            $comment->post()->incrementQuietly('comments_count');
-            // Incrémenter replies_count sur le parent si réponse
+            \App\Models\Post::where('id', $comment->post_id)
+                            ->increment('comments_count');
+
             if ($comment->parent_id) {
-                Comment::where('id', $comment->parent_id)->incrementQuietly('replies_count');
+                Comment::where('id', $comment->parent_id)
+                    ->increment('replies_count');
             }
         });
 
-        // Décrémenter à la suppression
         static::deleted(function (Comment $comment) {
-            $comment->post()->decrementQuietly('comments_count');
+            // MAX(0, count-1) — empêche le underflow UNSIGNED
+            \App\Models\Post::where('id', $comment->post_id)
+                            ->where('comments_count', '>', 0)
+                            ->decrement('comments_count');
+
             if ($comment->parent_id) {
-                Comment::where('id', $comment->parent_id)->decrementQuietly('replies_count');
+                Comment::where('id', $comment->parent_id)
+                    ->where('replies_count', '>', 0)
+                    ->decrement('replies_count');
             }
         });
     }

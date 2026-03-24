@@ -13,7 +13,8 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class,
             UserSeeder::class,
             JobSeeder::class,
-            ArticleCategorySeeder::class
+            ArticleCategorySeeder::class,
+            EventSeeder::class,
         ]);
     }
 }

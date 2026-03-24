@@ -59,6 +59,27 @@ class JobController extends Controller
     }
 
     /**
+     * Get recruiter jobs:
+     *   - admin  → all jobs across all companies
+     *   - others → only jobs posted by the current user
+     */
+    public function myPostedJobs(Request $request)
+    {
+        $user  = $request->user();
+        $query = Job::with(['company', 'postedBy'])
+            ->withCount(['applications', 'applications as pending_count' => function ($q) {
+                $q->where('status', 'pending');
+            }])
+            ->latest();
+
+        if ($user->role !== 'admin') {
+            $query->where('posted_by', $user->id);
+        }
+
+        return JobResource::collection($query->paginate(20));
+    }
+
+    /**
      * Create job (admin/company only)
      */
     public function store(Request $request)

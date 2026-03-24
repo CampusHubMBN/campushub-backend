@@ -10,6 +10,10 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ArticleCategoryController;
 use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\PostController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\EventController;
 
 // ========== PUBLIC ROUTES ==========
 
@@ -29,6 +33,10 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/jobs', [JobController::class, 'index']);
 Route::get('/jobs/{id}', [JobController::class, 'show']);
 
+// Events (public)
+Route::get('/events', [EventController::class, 'index']);
+Route::get('/events/{id}', [EventController::class, 'show']);
+
 // ⚠️  /articles/featured DOIT être déclaré AVANT /articles/{slug}
 //     sinon Laravel interpréterait "featured" comme un slug
  
@@ -45,7 +53,7 @@ Route::get('/posts/{slug}',           [PostController::class, 'show']);
 
 // ========== PROTECTED ROUTES ==========
 
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'user']);
@@ -63,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/users/{id}/cv', [UserController::class, 'deleteCv']);
 
     // Jobs - CRUD (admin/company)
+    Route::get('/my-posted-jobs', [JobController::class, 'myPostedJobs']);
     Route::post('/jobs', [JobController::class, 'store']);
     Route::patch('/jobs/{id}', [JobController::class, 'update']);
     Route::delete('/jobs/{id}', [JobController::class, 'destroy']);
@@ -100,9 +109,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/articles/{id}/cover',           [ArticleController::class, 'uploadCover']);
  
     // Catégories — même rôles
-    Route::post('/article-categories',            [ArticleCategoryController::class, 'store']);
-    Route::patch('/article-categories/{id}',      [ArticleCategoryController::class, 'update']);
-    Route::delete('/article-categories/{id}',     [ArticleCategoryController::class, 'destroy']);
+    Route::post('/article-categories',         [ArticleCategoryController::class, 'store']);
+    Route::patch('/article-categories/{id}',   [ArticleCategoryController::class, 'update']);
+    Route::delete('/article-categories/{id}',  [ArticleCategoryController::class, 'destroy']);
 
      // Posts CRUD
     Route::post('/posts',                      [PostController::class, 'store']);
@@ -120,4 +129,28 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/comments/{id}/replies',       [CommentController::class, 'replies']);
     Route::patch('/comments/{id}',             [CommentController::class, 'update']);
     Route::delete('/comments/{id}',            [CommentController::class, 'destroy']);
+
+    // Events — CRUD (bde_member, pedagogical, admin)
+    Route::post('/events', [EventController::class, 'store']);
+    Route::patch('/events/{id}', [EventController::class, 'update']);
+    Route::delete('/events/{id}', [EventController::class, 'destroy']);
+    Route::post('/events/{id}/cover', [EventController::class, 'uploadCover']);
+    Route::post('/events/{id}/publish', [EventController::class, 'publish']);
+
+    // Event attendance (authenticated)
+    Route::post('/events/{id}/attend', [EventController::class, 'attend']);
+    Route::delete('/events/{id}/attend', [EventController::class, 'unattend']);
+    Route::get('/events/{id}/attendees', [EventController::class, 'attendees']);
+
+    // ── ADMIN ──────────────────────────────────────────────────────
+    Route::prefix('admin')->group(function () {
+        Route::get('/stats',                   [AdminController::class, 'stats']);
+        Route::get('/users',                   [AdminController::class, 'users']);
+        Route::patch('/users/{id}/suspend',    [AdminController::class, 'toggleSuspend']);
+        Route::patch('/users/{id}/role',       [AdminController::class, 'updateRole']);
+        Route::post('/blog-categories',        [AdminController::class, 'storeBlogCategory']);
+        Route::patch('/blog-categories/{id}',  [AdminController::class, 'updateBlogCategory']);
+        Route::delete('/blog-categories/{id}', [AdminController::class, 'destroyBlogCategory']);
+        Route::get('/events', [EventController::class, 'adminIndex']);
+    });
 });

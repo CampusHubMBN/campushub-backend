@@ -38,7 +38,7 @@ class JobResource extends JsonResource
             'company_name' => $this->company_name,
             'external_url' => $this->external_url,
             
-            // 'company' => CompanyResource::make($this->whenLoaded('company')),
+            'company' => CompanyResource::make($this->whenLoaded('company')),
             'posted_by' => UserResource::make($this->whenLoaded('postedBy')),
             
             'views_count' => $this->views_count,

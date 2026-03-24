@@ -84,31 +84,59 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+        // $request->validate([
+        //     'email' => 'required|email',
+        //     'password' => 'required',
+        // ]);
+        $data = $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
         ]);
+        
+        // // Attempt login
+        // if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        //     throw ValidationException::withMessages([
+        //         'email' => ['Les identifiants fournis sont incorrects.'],
+        //     ]);
+        // }
+        $user = User::where('email', $data['email'])->first();
 
-        // Attempt login
-        if (!Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
-            throw ValidationException::withMessages([
-                'email' => ['Les identifiants fournis sont incorrects.'],
-            ]);
+        if (!$user || !\Hash::check($data['password'], $user->password)) {
+            return response()->json(['message' => 'Identifiants invalides'], 401);
         }
 
+        // Bloquer ici — avant même de créer le token
+        if ($user->suspended_at) {
+            return response()->json([
+                'message' => 'Votre compte a été suspendu. Contactez l\'administration.',
+                'code'    => 'ACCOUNT_SUSPENDED',
+            ], 403);
+        }
+
+        // $token = $user->createToken('auth_token')->plainTextToken;
+
         // Régénérer session (sécurité)
-        $request->session()->regenerate();
+        // $request->session()->regenerate();
 
         // Update last_login_at
-        $user = Auth::user();
-        $user->update(['last_login_at' => now()]);
+        // Régénérer session uniquement si disponible (Sanctum SPA utilise les sessions)
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
 
-        // Eager load info
+        Auth::login($user);
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        // ✅ $user directement, pas Auth::user()
+        $user->update(['last_login_at' => now()]);
         $user->load('info');
 
         return response()->json([
             'message' => 'Connexion réussie',
-            'user' => new UserResource($user),
+            'user'    => new UserResource($user),
         ]);
     }
 
