@@ -80,12 +80,12 @@ class JobController extends Controller
     }
 
     /**
-     * Create job (admin/company only)
+     * Create job (admin/company/pedagogical only)
      */
     public function store(Request $request)
     {
         // Authorization
-        if (!in_array($request->user()->role, ['admin', 'company'])) {
+        if (!in_array($request->user()->role, ['admin', 'company', 'pedagogical'])) {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
@@ -94,7 +94,7 @@ class JobController extends Controller
             'description' => 'required|string',
             'requirements' => 'nullable|string',
             'benefits' => 'nullable|string',
-            'type' => 'required|in:internship,apprenticeship,cdd,cdi,freelance',
+            'type' => 'required|in:internship,apprenticeship,cdd,cdi,freelance,student_job',
             'location_type' => 'required|in:onsite,remote,hybrid',
             'location_city' => 'nullable|string|max:100',
             'location_country' => 'nullable|string|max:100',
@@ -102,6 +102,7 @@ class JobController extends Controller
             'salary_max' => 'nullable|integer|min:0',
             'salary_period' => 'nullable|in:hourly,monthly,yearly',
             'duration_months' => 'nullable|integer|min:1',
+            'hours_per_week' => 'nullable|integer|min:1|max:21',
             'start_date' => 'nullable|date',
             'application_url' => 'nullable|url',
             'application_email' => 'nullable|email',
@@ -111,6 +112,8 @@ class JobController extends Controller
             'external_url' => 'nullable|url',
             'company_id' => 'required_if:source_type,internal|exists:companies,id',
             'status' => 'nullable|in:draft,published',
+        ], [
+            'hours_per_week.max' => 'Un job étudiant ne peut pas dépasser 21h par semaine.',
         ]);
 
         $validated['posted_by'] = $request->user()->id;
@@ -142,11 +145,12 @@ class JobController extends Controller
             'description' => 'sometimes|string',
             'requirements' => 'nullable|string',
             'benefits' => 'nullable|string',
-            'type' => 'sometimes|in:internship,apprenticeship,cdd,cdi,freelance',
+            'type' => 'sometimes|in:internship,apprenticeship,cdd,cdi,freelance,student_job',
             'location_type' => 'sometimes|in:onsite,remote,hybrid',
             'location_city' => 'nullable|string|max:100',
             'salary_min' => 'nullable|integer|min:0',
             'salary_max' => 'nullable|integer|min:0',
+            'hours_per_week' => 'nullable|integer|min:1|max:21',
             'application_deadline' => 'nullable|date',
             'status' => 'sometimes|in:draft,published,closed,filled',
         ]);

@@ -8,6 +8,7 @@ use App\Mail\InvitationMail;
 use App\Models\Invitation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class InvitationController extends Controller
@@ -45,7 +46,10 @@ class InvitationController extends Controller
                 'required',
                 'email',
                 'unique:users,email',
-                'unique:invitations,email',
+                Rule::unique('invitations', 'email')->where(function ($query) {
+                    return $query->where('used', false)
+                                 ->where('expires_at', '>', now());
+                }),
             ],
             'role' => [
                 'required',
@@ -65,7 +69,7 @@ class InvitationController extends Controller
         // Envoyer email (on va créer le mail juste après)
         try {
             Mail::to($invitation->email)->send(new InvitationMail($invitation));
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Log error mais ne pas fail la création
             \Log::error('Erreur envoi email invitation: ' . $e->getMessage());
         }
@@ -136,7 +140,7 @@ class InvitationController extends Controller
         // Renvoyer email
         try {
             Mail::to($invitation->email)->send(new InvitationMail($invitation));
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Erreur renvoi email invitation: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Erreur lors de l\'envoi de l\'email',

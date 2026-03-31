@@ -4,6 +4,9 @@ namespace App\Enums;
 
 enum RealtimeEvent: string
 {
+    // Auth
+    case USER_REGISTERED = 'user.registered';
+
     // Applications
     case APPLICATION_CREATED = 'application.created';
     case APPLICATION_STATUS_UPDATED = 'application.status_updated';
@@ -18,5 +21,8 @@ enum RealtimeEvent: string
     case EVENT_CANCELLED = 'event.cancelled';
     case EVENT_REMINDER = 'event.reminder';
     case POST_CREATED = 'post.created';
-    case COMMENT_ADDED = 'comment.added';
+    case POST_PUBLISHED = 'post.published';
+    case ARTICLE_PUBLISHED = 'article.published';
+    case COMMENT_CREATED = 'comment.created';
+    case REACTION_ADDED = 'reaction.added';
 }

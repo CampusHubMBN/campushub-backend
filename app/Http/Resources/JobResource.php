@@ -28,6 +28,7 @@ class JobResource extends JsonResource
             'salary_currency' => $this->salary_currency,
             
             'duration_months' => $this->duration_months,
+            'hours_per_week' => $this->hours_per_week,
             'start_date' => $this->start_date?->format('Y-m-d'),
             
             'application_url' => $this->application_url,

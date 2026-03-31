@@ -3,17 +3,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RealtimeEvent;
 use App\Http\Resources\PostResource;
 use App\Http\Resources\BlogCategoryResource;
 use App\Models\Post;
 use App\Models\BlogCategory;
 use App\Models\PostReaction;
+use App\Traits\PublishesRedisEvents;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
+    use PublishesRedisEvents;
     // Tous les connectés peuvent créer des posts
     private const AUTHOR_ROLES = ['student', 'alumni', 'bde_member', 'pedagogical', 'company'];
 
@@ -127,6 +130,15 @@ class PostController extends Controller
         $post = Post::create($data);
         $post->load(['author.info', 'category']);
 
+        if (($data['status'] ?? 'draft') === 'published') {
+            $this->publishEvent(RealtimeEvent::POST_PUBLISHED, [
+                'postId'     => $post->id,
+                'postTitle'  => $post->title,
+                'authorId'   => $post->author_id,
+                'authorName' => $request->user()->name,
+            ]);
+        }
+
         return response()->json(['data' => new PostResource($post)], 201);
     }
 
@@ -152,7 +164,18 @@ class PostController extends Controller
             $data['cover_image_url'] = $this->uploadCover($request);
         }
 
+        $wasPublished = $post->status === 'published';
         $post->update($data);
+
+        if (!$wasPublished && isset($data['status']) && $data['status'] === 'published') {
+            $this->publishEvent(RealtimeEvent::POST_PUBLISHED, [
+                'postId'     => $post->id,
+                'postTitle'  => $post->title,
+                'authorId'   => $post->author_id,
+                'authorName' => $request->user()->name,
+            ]);
+        }
+
         $post->load(['author.info', 'category']);
 
         return response()->json(['data' => new PostResource($post->fresh())]);
@@ -184,6 +207,15 @@ class PostController extends Controller
             'status'       => $newStatus,
             'published_at' => $newStatus === 'published' ? ($post->published_at ?? now()) : $post->published_at,
         ]);
+
+        if ($newStatus === 'published') {
+            $this->publishEvent(RealtimeEvent::POST_PUBLISHED, [
+                'postId'     => $post->id,
+                'postTitle'  => $post->title,
+                'authorId'   => $post->author_id,
+                'authorName' => $request->user()->name,
+            ]);
+        }
 
         return response()->json([
             'data'    => new PostResource($post->fresh(['author.info', 'category'])),
@@ -263,6 +295,18 @@ class PostController extends Controller
         }
 
         $post->refresh();
+
+        // Notify post owner when a new reaction is added (not removed)
+        if ($userReaction !== null && $post->author_id !== $userId) {
+            $this->publishEvent(RealtimeEvent::REACTION_ADDED, [
+                'postId'       => $post->id,
+                'postTitle'    => $post->title,
+                'actorId'      => $userId,
+                'actorName'    => $request->user()->name,
+                'postOwnerId'  => $post->author_id,
+                'reactionType' => $userReaction,
+            ]);
+        }
 
         return response()->json([
             'data' => [

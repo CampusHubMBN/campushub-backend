@@ -3,9 +3,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RealtimeEvent;
 use App\Http\Resources\UserResource;
 use App\Models\Invitation;
 use App\Models\User;
+use App\Traits\PublishesRedisEvents;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    use PublishesRedisEvents;
     /**
      * Register avec token d'invitation
      */
@@ -65,6 +68,13 @@ class AuthController extends Controller
 
         // Marquer invitation comme utilisée
         $invitation->markAsUsed();
+
+        // Notifier les admins
+        $this->publishEvent(RealtimeEvent::USER_REGISTERED, [
+            'userId'   => $user->id,
+            'userName' => $user->name,
+            'userRole' => $user->role,
+        ]);
 
         // Auto-login
         Auth::login($user);

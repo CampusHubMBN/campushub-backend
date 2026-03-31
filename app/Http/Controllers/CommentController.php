@@ -3,14 +3,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RealtimeEvent;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;
 use App\Models\Post;
+use App\Traits\PublishesRedisEvents;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
+    use PublishesRedisEvents;
     /**
      * GET /posts/{postId}/comments
      * Commentaires racines paginés + leurs replies (niveau 1)
@@ -95,6 +98,15 @@ class CommentController extends Controller
         ]);
 
         $comment->load(['author.info']);
+
+        $this->publishEvent(RealtimeEvent::COMMENT_CREATED, [
+            'postId'                => $post->id,
+            'postTitle'             => $post->title,
+            'authorId'              => $request->user()->id,
+            'authorName'            => $request->user()->name,
+            'postOwnerId'           => $post->author_id,
+            'parentCommentAuthorId' => isset($parent) ? $parent->author_id : null,
+        ]);
 
         return response()->json([
             'data'    => new CommentResource($comment),

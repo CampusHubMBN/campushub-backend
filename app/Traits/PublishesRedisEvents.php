@@ -18,7 +18,7 @@ trait PublishesRedisEvents
                     'payload' => $payload,
                 ])
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Redis publish error: {$e->getMessage()}");
         }
     }

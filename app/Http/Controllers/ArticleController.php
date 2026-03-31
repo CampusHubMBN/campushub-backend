@@ -3,14 +3,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RealtimeEvent;
 use App\Http\Resources\ArticleResource;
 use App\Models\Article;
+use App\Traits\PublishesRedisEvents;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ArticleController extends Controller
 {
+    use PublishesRedisEvents;
     // ── Rôles auteurs ─────────────────────────────────────────────────────────
     private const AUTHOR_ROLES = ['pedagogical', 'bde_member'];
 
@@ -160,6 +163,15 @@ class ArticleController extends Controller
         $article = Article::create($data);
         $article->load(['category', 'author.info']);
 
+        if (!empty($data['is_published'])) {
+            $this->publishEvent(RealtimeEvent::ARTICLE_PUBLISHED, [
+                'articleId'    => $article->id,
+                'articleTitle' => $article->title,
+                'authorId'     => $article->author_id,
+                'authorName'   => $request->user()->name,
+            ]);
+        }
+
         return response()->json([
             'data'    => new ArticleResource($article),
             'message' => 'Article créé',
@@ -203,7 +215,18 @@ class ArticleController extends Controller
             $data['cover_image_url'] = $this->uploadCover($request);
         }
 
+        $wasPublished = $article->is_published;
         $article->update($data);
+
+        if (!$wasPublished && !empty($data['is_published'])) {
+            $this->publishEvent(RealtimeEvent::ARTICLE_PUBLISHED, [
+                'articleId'    => $article->id,
+                'articleTitle' => $article->title,
+                'authorId'     => $article->author_id,
+                'authorName'   => $request->user()->name,
+            ]);
+        }
+
         $article->load(['category', 'author.info']);
 
         return response()->json([
@@ -249,11 +272,21 @@ class ArticleController extends Controller
             403
         );
 
-        $article->update(['is_published' => ! $article->is_published]);
+        $wasPublished = $article->is_published;
+        $article->update(['is_published' => ! $wasPublished]);
+
+        if (! $wasPublished) {
+            $this->publishEvent(RealtimeEvent::ARTICLE_PUBLISHED, [
+                'articleId'    => $article->id,
+                'articleTitle' => $article->title,
+                'authorId'     => $article->author_id,
+                'authorName'   => $request->user()->name,
+            ]);
+        }
 
         return response()->json([
             'data'    => new ArticleResource($article->fresh(['category', 'author.info'])),
-            'message' => $article->is_published ? 'Article publié' : 'Article dépublié',
+            'message' => ! $wasPublished ? 'Article publié' : 'Article dépublié',
         ]);
     }
 
