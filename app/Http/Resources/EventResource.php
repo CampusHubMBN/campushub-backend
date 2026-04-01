@@ -30,6 +30,12 @@ class EventResource extends JsonResource
                 'name'   => $this->organizer->name,
             ]),
 
+            'last_editor' => $this->whenLoaded('lastEditor', fn() =>
+                $this->lastEditor
+                    ? ['id' => $this->lastEditor->id, 'name' => $this->lastEditor->name]
+                    : null
+            ),
+
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

@@ -26,6 +26,7 @@ class CampusEvent extends Model
         'target_roles',
         'organizer_id',
         'published_at',
+        'last_edited_by_id',
     ];
 
     protected $casts = [
@@ -41,6 +42,11 @@ class CampusEvent extends Model
     public function organizer()
     {
         return $this->belongsTo(User::class, 'organizer_id');
+    }
+
+    public function lastEditor()
+    {
+        return $this->belongsTo(User::class, 'last_edited_by_id');
     }
 
     public function attendances()

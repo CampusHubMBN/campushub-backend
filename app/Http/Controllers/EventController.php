@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 use App\Http\Resources\EventResource;
 use App\Mail\EventConfirmationMail;
 use App\Mail\EventReminderMail;
+use App\Mail\EventUpdatedMail;
+use App\Models\User;
 use App\Models\CampusEvent;
 use App\Models\EventAttendance;
 use App\Traits\PublishesRedisEvents;
@@ -25,7 +27,7 @@ class EventController extends Controller
      */
     public function index(Request $request)
     {
-        $query = CampusEvent::with(['organizer'])
+        $query = CampusEvent::with(['organizer', 'lastEditor'])
             ->withCount(['registeredAttendances as attendees_count'])
             ->published()
             ->latest('start_date');
@@ -46,7 +48,7 @@ class EventController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $event = CampusEvent::with(['organizer'])
+        $event = CampusEvent::with(['organizer', 'lastEditor'])
             ->withCount(['registeredAttendances as attendees_count'])
             ->findOrFail($id);
 
@@ -90,7 +92,7 @@ class EventController extends Controller
             'organizer_id' => $request->user()->id,
         ]);
 
-        return response()->json(new EventResource($event->load('organizer')), 201);
+        return response()->json(new EventResource($event->load(['organizer', 'lastEditor'])), 201);
     }
 
     /**
@@ -113,15 +115,24 @@ class EventController extends Controller
             'target_roles.*' => 'in:student,alumni,bde_member,pedagogical,company,admin',
         ]);
 
-        $attendeeIds = EventAttendance::where('event_id', $event->id)
-            ->where('status', 'registered')
-            ->pluck('user_id')
-            ->toArray();
+        $attendees = User::whereIn('id',
+            EventAttendance::where('event_id', $event->id)
+                ->where('status', 'registered')
+                ->pluck('user_id')
+        )->get();
+
+        // Track admin edits so we can show "Modifié par X" on the event page
+        if ($request->user()->id !== $event->organizer_id) {
+            $validated['last_edited_by_id'] = $request->user()->id;
+        }
 
         $event->update($validated);
-        $event->load('organizer');
+        $event->load(['organizer', 'lastEditor']);
 
-        if (!empty($attendeeIds)) {
+        if ($attendees->isNotEmpty()) {
+            $attendeeIds = $attendees->pluck('id')->toArray();
+
+            // Real-time in-app notifications
             $this->publishEvent(RealtimeEvent::EVENT_UPDATED, [
                 'eventId'     => $event->id,
                 'eventTitle'  => $event->title,
@@ -129,6 +140,15 @@ class EventController extends Controller
                 'startDate'   => $event->start_date->toISOString(),
                 'attendeeIds' => $attendeeIds,
             ]);
+
+            // Email each attendee
+            foreach ($attendees as $attendee) {
+                try {
+                    Mail::to($attendee->email)->queue(new EventUpdatedMail($event, $attendee));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("EventUpdatedMail failed for {$attendee->email}: {$e->getMessage()}");
+                }
+            }
         }
 
         return response()->json(new EventResource($event));
@@ -196,7 +216,7 @@ class EventController extends Controller
         $this->requireOrganizer($request, $event);
 
         $event->update(['published_at' => now()]);
-        $event->load('organizer');
+        $event->load(['organizer', 'lastEditor']);
         $event->loadCount(['registeredAttendances as attendees_count']);
 
         $this->publishEvent(RealtimeEvent::EVENT_PUBLISHED, [
@@ -250,7 +270,7 @@ class EventController extends Controller
 
         // Send confirmation email
         try {
-            Mail::to($user->email)->send(new EventConfirmationMail($event, $user));
+            Mail::to($user->email)->queue(new EventConfirmationMail($event, $user));
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Event confirmation email failed: {$e->getMessage()}");
         }
@@ -335,7 +355,7 @@ class EventController extends Controller
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
-        $events = CampusEvent::with('organizer')
+        $events = CampusEvent::with(['organizer', 'lastEditor'])
             ->withCount(['registeredAttendances as attendees_count'])
             ->latest()
             ->paginate(20);

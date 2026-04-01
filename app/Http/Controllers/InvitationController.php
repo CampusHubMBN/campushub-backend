@@ -68,7 +68,7 @@ class InvitationController extends Controller
 
         // Envoyer email (on va créer le mail juste après)
         try {
-            Mail::to($invitation->email)->send(new InvitationMail($invitation));
+            Mail::to($invitation->email)->queue(new InvitationMail($invitation));
         } catch (\Throwable $e) {
             // Log error mais ne pas fail la création
             \Log::error('Erreur envoi email invitation: ' . $e->getMessage());
@@ -139,7 +139,7 @@ class InvitationController extends Controller
 
         // Renvoyer email
         try {
-            Mail::to($invitation->email)->send(new InvitationMail($invitation));
+            Mail::to($invitation->email)->queue(new InvitationMail($invitation));
         } catch (\Throwable $e) {
             \Log::error('Erreur renvoi email invitation: ' . $e->getMessage());
             return response()->json([
