@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../campushub-realtime"
+		},
+		{
+			"path": "../campushub-frontend"
+		}
+	],
+	"settings": {}
+}
