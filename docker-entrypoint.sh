@@ -1,34 +1,34 @@
 #!/bin/bash
 
+# Flush output immediately
+exec 1>&1
+exec 2>&2
+
+echo "==> PORT is: ${PORT:-80}"
+
+# Railway assigns a dynamic port
+PORT="${PORT:-80}"
+
 echo "==> Fixing Apache MPM..."
 find /etc/apache2/mods-enabled/ -name "mpm_*.load" -delete 2>/dev/null || true
 find /etc/apache2/mods-enabled/ -name "mpm_*.conf" -delete 2>/dev/null || true
 ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load
 ln -sf /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf
 
-# Railway assigns a dynamic port — configure Apache to listen on it
-PORT="${PORT:-80}"
-echo "==> Configuring Apache to listen on port $PORT..."
-sed -i "s/Listen 80/Listen $PORT/" /etc/apache2/ports.conf
+echo "==> Writing ports.conf for port $PORT..."
+echo "Listen $PORT" > /etc/apache2/ports.conf
+
+echo "==> Updating VirtualHost port..."
 sed -i "s/<VirtualHost \*:80>/<VirtualHost *:$PORT>/" /etc/apache2/sites-available/*.conf
 
+echo "==> Setting ServerName to suppress warning..."
+echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
 echo "==> Clearing config cache..."
-php artisan config:clear || echo "config:clear failed, continuing..."
+php artisan config:clear 2>&1 || echo "config:clear failed"
 
 echo "==> Running migrations..."
-php artisan migrate --force || echo "migrate failed, continuing..."
-
-echo "==> Apache ports.conf after sed:"
-cat /etc/apache2/ports.conf
+php artisan migrate --force 2>&1 || echo "migrate failed"
 
 echo "==> Starting Apache on port $PORT..."
-apache2-foreground &
-APACHE_PID=$!
-sleep 3
-if kill -0 $APACHE_PID 2>/dev/null; then
-  echo "==> Apache started successfully (pid $APACHE_PID)"
-  wait $APACHE_PID
-else
-  echo "==> Apache FAILED to start"
-  exit 1
-fi
+exec apache2-foreground
