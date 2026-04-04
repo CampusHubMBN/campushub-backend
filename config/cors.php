@@ -19,29 +19,21 @@ return [
 
     'allowed_methods' => ['*'],
 
-     'allowed_origins' => [
+    'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:3000'),
-        env('NESTJS_URL',   'http://localhost:3001'),  // ← ajouter
+        env('NESTJS_URL',   'http://localhost:3001'),
     ],
+
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
-    'supports_credentials' => true,
-
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
-
-    'allowed_methods' => ['*'],
-
-    // 'allowed_origins' => ['*'],
-
-    // 'allowed_origins_patterns' => [],
-
-    // 'allowed_headers' => ['*'],
-
-    // 'exposed_headers' => [],
+    'exposed_headers' => [],
 
     'max_age' => 0,
 
-    'supports_credentials' => true,
+    // TOKEN AUTH: supports_credentials not required (no cookies)
+    // SESSION AUTH: must be true for CSRF cookie
+    'supports_credentials' => false,
 
 ];

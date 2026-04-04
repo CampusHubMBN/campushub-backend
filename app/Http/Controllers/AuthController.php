@@ -76,16 +76,20 @@ class AuthController extends Controller
             'userRole' => $user->role,
         ]);
 
-        // Auto-login
-        Auth::login($user);
-        $request->session()->regenerate();
-
         // Eager load info
         $user->load('info');
 
+        // --- TOKEN AUTH ---
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // --- SESSION AUTH (SPA same-domain only) ---
+        // Auth::login($user);
+        // $request->session()->regenerate();
+
         return response()->json([
             'message' => 'Compte créé avec succès',
-            'user' => new UserResource($user),
+            'user'    => new UserResource($user),
+            'token'   => $token,
         ], 201);
     }
 
@@ -123,30 +127,22 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // $token = $user->createToken('auth_token')->plainTextToken;
-
-        // Régénérer session (sécurité)
-        // $request->session()->regenerate();
-
-        // Update last_login_at
-        // Régénérer session uniquement si disponible (Sanctum SPA utilise les sessions)
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
-
-        Auth::login($user);
-
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
-
-        // ✅ $user directement, pas Auth::user()
         $user->update(['last_login_at' => now()]);
         $user->load('info');
+
+        // --- TOKEN AUTH ---
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // --- SESSION AUTH (SPA same-domain only) ---
+        // if ($request->hasSession()) {
+        //     Auth::login($user);
+        //     $request->session()->regenerate();
+        // }
 
         return response()->json([
             'message' => 'Connexion réussie',
             'user'    => new UserResource($user),
+            'token'   => $token,
         ]);
     }
 
@@ -155,10 +151,13 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        Auth::guard('web')->logout();
+        // --- TOKEN AUTH ---
+        $request->user()->currentAccessToken()->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // --- SESSION AUTH (SPA same-domain only) ---
+        // Auth::guard('web')->logout();
+        // $request->session()->invalidate();
+        // $request->session()->regenerateToken();
 
         return response()->json([
             'message' => 'Déconnexion réussie',

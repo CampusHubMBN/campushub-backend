@@ -14,12 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Activer Sanctum stateful
-        $middleware->statefulApi();
-        //  rajouter session aux routes APIs
-        $middleware->api(prepend: [
-            \Illuminate\Session\Middleware\StartSession::class,
-        ]);
+        // SESSION AUTH (SPA same-domain only): enables CSRF + session on API routes
+        // $middleware->statefulApi();
+        // $middleware->api(prepend: [
+        //     \Illuminate\Session\Middleware\StartSession::class,
+        // ]);
         // revoker les comptes suspendus
         $middleware->alias([
             'not.suspended' => \App\Http\Middleware\CheckNotSuspended::class,
