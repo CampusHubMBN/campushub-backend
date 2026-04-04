@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo "==> Fixing Apache MPM..."
 find /etc/apache2/mods-enabled/ -name "mpm_*.load" -delete 2>/dev/null || true
@@ -14,10 +13,10 @@ sed -i "s/Listen 80/Listen $PORT/" /etc/apache2/ports.conf
 sed -i "s/<VirtualHost \*:80>/<VirtualHost *:$PORT>/" /etc/apache2/sites-available/*.conf
 
 echo "==> Clearing config cache..."
-php artisan config:clear
+php artisan config:clear || echo "config:clear failed, continuing..."
 
 echo "==> Running migrations..."
-php artisan migrate --force
+php artisan migrate --force || echo "migrate failed, continuing..."
 
 echo "==> Starting Apache on port $PORT..."
 exec apache2-foreground
