@@ -24,8 +24,9 @@ sed -i "s/<VirtualHost \*:80>/<VirtualHost *:$PORT>/" /etc/apache2/sites-availab
 echo "==> Setting ServerName to suppress warning..."
 echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-echo "==> Clearing config cache..."
+echo "==> Clearing and recaching config..."
 php artisan config:clear 2>&1 || echo "config:clear failed"
+php artisan config:cache 2>&1 || echo "config:cache failed"
 
 echo "==> Running migrations..."
 php artisan migrate --force 2>&1 || echo "migrate failed"
