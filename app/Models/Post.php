@@ -17,7 +17,7 @@ class Post extends Model
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'author_id', 'category_id',
+        'author_id', 'category_id', 'type',
         'title', 'slug', 'excerpt', 'content', 'cover_image_url',
         'tags', 'status', 'published_at',
         'views_count', 'comments_count',
@@ -25,13 +25,13 @@ class Post extends Model
     ];
 
     protected $casts = [
-        'tags'         => 'array',
-        'published_at' => 'datetime',
-        'views_count'  => 'integer',
+        'tags'           => 'array',
+        'published_at'   => 'datetime',
+        'views_count'    => 'integer',
         'comments_count' => 'integer',
-        'likes_count'  => 'integer',
-        'useful_count' => 'integer',
-        'bravo_count'  => 'integer',
+        'likes_count'    => 'integer',
+        'useful_count'   => 'integer',
+        'bravo_count'    => 'integer',
     ];
 
     // ── Boot ─────────────────────────────────────────────────────────────────
@@ -102,6 +102,11 @@ class Post extends Model
     public function rootComments()
     {
         return $this->hasMany(Comment::class)->whereNull('parent_id')->latest();
+    }
+
+    public function scopeByType($query, string $type)
+    {
+        return $query->where('type', $type);
     }
 
     public function reactions()

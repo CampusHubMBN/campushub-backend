@@ -15,10 +15,12 @@ class Comment extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = ['post_id', 'author_id', 'parent_id', 'content'];
+    protected $fillable = ['post_id', 'author_id', 'parent_id', 'content', 'is_accepted_answer'];
 
     protected $casts = [
-        'replies_count' => 'integer',
+        'replies_count'      => 'integer',
+        'votes_count'        => 'integer', // signed — can be negative (downvotes)
+        'is_accepted_answer' => 'boolean',
     ];
 
     // ── Boot ─────────────────────────────────────────────────────────────────
@@ -69,5 +71,16 @@ class Comment extends Model
     public function replies()
     {
         return $this->hasMany(Comment::class, 'parent_id')->latest();
+    }
+
+    public function votes()
+    {
+        return $this->hasMany(CommentVote::class);
+    }
+
+    public function getUserVote(?string $userId): ?int
+    {
+        if (!$userId) return null;
+        return $this->votes()->where('user_id', $userId)->value('value');
     }
 }

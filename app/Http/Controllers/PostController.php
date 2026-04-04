@@ -53,6 +53,9 @@ class PostController extends Controller
         if ($authorId = $request->query('author_id')) {
             $query->where('author_id', $authorId);
         }
+        if ($type = $request->query('type')) {
+            $query->byType($type);
+        }
         if ($request->boolean('mine') && $request->query('status')) {
             $query->where('status', $request->query('status'));
         }
@@ -134,6 +137,7 @@ class PostController extends Controller
             $this->publishEvent(RealtimeEvent::POST_PUBLISHED, [
                 'postId'     => $post->id,
                 'postTitle'  => $post->title,
+                'postType'   => $post->type,
                 'authorId'   => $post->author_id,
                 'authorName' => $request->user()->name,
             ]);
@@ -171,6 +175,7 @@ class PostController extends Controller
             $this->publishEvent(RealtimeEvent::POST_PUBLISHED, [
                 'postId'     => $post->id,
                 'postTitle'  => $post->title,
+                'postType'   => $post->type,
                 'authorId'   => $post->author_id,
                 'authorName' => $request->user()->name,
             ]);
@@ -212,6 +217,7 @@ class PostController extends Controller
             $this->publishEvent(RealtimeEvent::POST_PUBLISHED, [
                 'postId'     => $post->id,
                 'postTitle'  => $post->title,
+                'postType'   => $post->type,
                 'authorId'   => $post->author_id,
                 'authorName' => $request->user()->name,
             ]);
@@ -349,6 +355,7 @@ class PostController extends Controller
             'tags'         => 'nullable|array',
             'tags.*'       => 'string|max:50',
             'status'       => 'sometimes|in:draft,published',
+            'type'         => 'sometimes|in:post,question',
         ]);
     }
 }

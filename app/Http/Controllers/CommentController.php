@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Enums\RealtimeEvent;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;
+use App\Models\CommentVote;
 use App\Models\Post;
 use App\Traits\PublishesRedisEvents;
 use Illuminate\Http\JsonResponse;
@@ -22,12 +23,23 @@ class CommentController extends Controller
     {
         $post = Post::findOrFail($postId);
 
-        $comments = Comment::with(['author.info', 'replies.author.info'])
+        $isQuestion = $post->type === 'question';
+
+        $query = Comment::with(['author.info', 'replies.author.info'])
             ->where('post_id', $post->id)
-            ->whereNull('parent_id')       // racines uniquement
-            ->withTrashed()                // garder les supprimés pour la structure
-            ->latest()
-            ->paginate(20);
+            ->whereNull('parent_id')
+            ->withTrashed();
+
+        if ($isQuestion) {
+            // Accepted answer first, then by votes descending, then newest
+            $query->orderByDesc('is_accepted_answer')
+                  ->orderByDesc('votes_count')
+                  ->orderByDesc('created_at');
+        } else {
+            $query->latest();
+        }
+
+        $comments = $query->paginate(20);
 
         return response()->json([
             'data' => CommentResource::collection($comments->items()),
@@ -147,5 +159,97 @@ class CommentController extends Controller
         $comment->delete();
 
         return response()->json(['message' => 'Commentaire supprimé']);
+    }
+
+    /**
+     * POST /comments/{id}/vote
+     * Body: { value: 1 | -1 }
+     * Toggle: same value removes the vote
+     */
+    public function vote(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'value' => 'required|in:1,-1',
+        ]);
+
+        $comment  = Comment::findOrFail($id);
+        $userId   = $request->user()->id;
+        $newValue = (int) $request->input('value');
+
+        // Cannot vote on own comment
+        abort_if($comment->author_id === $userId, 403, 'Vous ne pouvez pas voter pour votre propre réponse');
+
+        $existing = CommentVote::where('comment_id', $comment->id)
+                               ->where('user_id', $userId)
+                               ->first();
+
+        if ($existing) {
+            if ($existing->value === $newValue) {
+                // Toggle off: remove the vote
+                $comment->update(['votes_count' => $comment->votes_count - $existing->value]);
+                $existing->delete();
+                $userVote = null;
+            } else {
+                // Switch direction: remove old, add new
+                $comment->update(['votes_count' => $comment->votes_count - $existing->value + $newValue]);
+                $existing->update(['value' => $newValue]);
+                $userVote = $newValue;
+            }
+        } else {
+            CommentVote::create([
+                'comment_id' => $comment->id,
+                'user_id'    => $userId,
+                'value'      => $newValue,
+            ]);
+            $comment->update(['votes_count' => $comment->votes_count + $newValue]);
+            $userVote = $newValue;
+        }
+
+        $comment->refresh();
+
+        return response()->json([
+            'data' => [
+                'votes_count' => $comment->votes_count,
+                'user_vote'   => $userVote,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /comments/{id}/accept
+     * Only the post author can mark an answer as accepted (toggle)
+     */
+    public function accept(Request $request, string $id): JsonResponse
+    {
+        $comment = Comment::with('post')->findOrFail($id);
+        $post    = $comment->post;
+
+        abort_unless($request->user()->id === $post->author_id, 403, 'Seul l\'auteur peut accepter une réponse');
+        abort_if($post->type !== 'question', 422, 'Ce post n\'est pas une question');
+        abort_if(!is_null($comment->parent_id), 422, 'Seules les réponses racines peuvent être acceptées');
+
+        $isAlreadyAccepted = $comment->is_accepted_answer;
+
+        // Unaccept any previously accepted answer
+        Comment::where('post_id', $post->id)
+               ->where('is_accepted_answer', true)
+               ->update(['is_accepted_answer' => false]);
+
+        // Toggle: if it was already accepted, we just un-accept (leave all false)
+        if (!$isAlreadyAccepted) {
+            $comment->update(['is_accepted_answer' => true]);
+        }
+
+        $comment->refresh();
+
+        return response()->json([
+            'data' => [
+                'id'                 => $comment->id,
+                'is_accepted_answer' => $comment->is_accepted_answer,
+            ],
+            'message' => $comment->is_accepted_answer
+                ? 'Réponse acceptée'
+                : 'Réponse désacceptée',
+        ]);
     }
 }

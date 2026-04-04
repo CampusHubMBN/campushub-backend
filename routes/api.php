@@ -134,6 +134,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/comments/{id}/replies',       [CommentController::class, 'replies']);
     Route::patch('/comments/{id}',             [CommentController::class, 'update']);
     Route::delete('/comments/{id}',            [CommentController::class, 'destroy']);
+    Route::post('/comments/{id}/vote',         [CommentController::class, 'vote']);
+    Route::post('/comments/{id}/accept',       [CommentController::class, 'accept']);
 
     // Events — CRUD (bde_member, pedagogical, admin)
     Route::post('/events', [EventController::class, 'store']);

@@ -15,15 +15,18 @@ class CommentResource extends JsonResource
         $userId = $request->user()?->id;
  
         return [
-            'id'            => $this->id,
-            'post_id'       => $this->post_id,
-            'parent_id'     => $this->parent_id,
-            'content'       => $this->deleted_at ? null : $this->content, // masquer contenu si supprimé
-            'is_deleted'    => !is_null($this->deleted_at),
-            'replies_count' => $this->replies_count,
-            'is_own'        => $userId === $this->author_id,
-            'created_at'    => $this->created_at,
-            'updated_at'    => $this->updated_at,
+            'id'                 => $this->id,
+            'post_id'            => $this->post_id,
+            'parent_id'          => $this->parent_id,
+            'content'            => $this->deleted_at ? null : $this->content,
+            'is_deleted'         => !is_null($this->deleted_at),
+            'replies_count'      => $this->replies_count,
+            'votes_count'        => $this->votes_count,
+            'is_accepted_answer' => (bool) $this->is_accepted_answer,
+            'user_vote'          => $this->getUserVote($userId),
+            'is_own'             => $userId === $this->author_id,
+            'created_at'         => $this->created_at,
+            'updated_at'         => $this->updated_at,
  
             'author' => $this->whenLoaded('author', fn() => [
                 'id'         => $this->author->id,
