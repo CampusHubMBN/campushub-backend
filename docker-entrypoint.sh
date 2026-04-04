@@ -18,5 +18,17 @@ php artisan config:clear || echo "config:clear failed, continuing..."
 echo "==> Running migrations..."
 php artisan migrate --force || echo "migrate failed, continuing..."
 
+echo "==> Apache ports.conf after sed:"
+cat /etc/apache2/ports.conf
+
 echo "==> Starting Apache on port $PORT..."
-exec apache2-foreground
+apache2-foreground &
+APACHE_PID=$!
+sleep 3
+if kill -0 $APACHE_PID 2>/dev/null; then
+  echo "==> Apache started successfully (pid $APACHE_PID)"
+  wait $APACHE_PID
+else
+  echo "==> Apache FAILED to start"
+  exit 1
+fi
