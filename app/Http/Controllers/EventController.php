@@ -59,8 +59,12 @@ class EventController extends Controller
         $data = (new EventResource($event))->toArray($request);
 
         // Add user-specific fields if authenticated
-        if ($request->user()) {
-            $data['is_registered'] = $event->isUserRegistered($request->user()->id);
+        // On public routes, $request->user() is null — resolve from Bearer token manually
+        $user = $request->user()
+            ?? \Laravel\Sanctum\PersonalAccessToken::findToken($request->bearerToken())?->tokenable;
+
+        if ($user) {
+            $data['is_registered'] = $event->isUserRegistered($user->id);
         }
 
         return response()->json($data);
