@@ -254,8 +254,9 @@ class EventController extends Controller
             return response()->json(['message' => 'Cet événement est déjà passé'], 422);
         }
 
-        // Check role restriction
-        if ($event->target_roles && !in_array($user->role, $event->target_roles)) {
+        // Check role restriction — organizer roles (bde_member, pedagogical, admin) bypass target audience
+        $organizerRoles = ['admin', 'bde_member', 'pedagogical'];
+        if ($event->target_roles && !in_array($user->role, $event->target_roles) && !in_array($user->role, $organizerRoles)) {
             return response()->json(['message' => 'Vous n\'êtes pas autorisé à vous inscrire à cet événement'], 403);
         }
 

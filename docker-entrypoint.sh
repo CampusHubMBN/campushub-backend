@@ -31,5 +31,5 @@ php artisan config:cache 2>&1 || echo "config:cache failed"
 echo "==> Running migrations..."
 php artisan migrate --force 2>&1 || echo "migrate failed"
 
-echo "==> Starting Apache on port $PORT..."
-exec apache2-foreground
+echo "==> Starting Apache + queue worker via supervisord..."
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

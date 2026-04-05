@@ -2,7 +2,7 @@ FROM php:8.4-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev libicu-dev \
+    git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev libicu-dev supervisor \
     && docker-php-ext-install pdo_mysql mbstring xml bcmath gd zip intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -38,6 +38,8 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE ${PORT:-80}
 
