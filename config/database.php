@@ -180,8 +180,10 @@ return [
         ],
          // ← Connexion sans prefix pour les events realtime
         'realtime' => [
+            'url'      => env('REDIS_URL'),
             'host'     => env('REDIS_HOST', '127.0.0.1'),
-            'port'     => env('REDIS_PORT', '6380'),
+            'port'     => env('REDIS_PORT', '6379'),
+            'password' => env('REDIS_PASSWORD', null),
             'database' => 0,
             'prefix'   => '',  // ← override le prefix global
         ],
