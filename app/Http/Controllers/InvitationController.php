@@ -46,25 +46,39 @@ class InvitationController extends Controller
                 'required',
                 'email',
                 'unique:users,email',
-                Rule::unique('invitations', 'email')->where(function ($query) {
-                    return $query->where('used', false)
-                                 ->where('expires_at', '>', now());
-                }),
             ],
             'role' => [
                 'required',
                 'in:student,alumni,bde_member,pedagogical,company',
             ],
         ], [
-            'email.unique' => 'Cet email est déjà inscrit ou a déjà une invitation en attente.',
+            'email.unique' => 'Cet email est déjà inscrit.',
         ]);
 
-        // Créer invitation
-        $invitation = Invitation::create([
-            'email' => $validated['email'],
-            'role' => $validated['role'],
-            'invited_by' => $request->user()->id,
-        ]);
+        // If a previous invitation exists (used or expired), renew it instead of creating a duplicate
+        $invitation = Invitation::where('email', $validated['email'])->first();
+
+        if ($invitation) {
+            if ($invitation->isValid()) {
+                return response()->json([
+                    'message' => 'Une invitation en attente existe déjà pour cet email.',
+                ], 422);
+            }
+            // Renew expired/used invitation
+            $invitation->update([
+                'role'       => $validated['role'],
+                'token'      => \Illuminate\Support\Str::random(64),
+                'expires_at' => now()->addDays(7),
+                'used'       => false,
+                'used_at'    => null,
+            ]);
+        } else {
+            $invitation = Invitation::create([
+                'email'      => $validated['email'],
+                'role'       => $validated['role'],
+                'invited_by' => $request->user()->id,
+            ]);
+        }
 
         // Envoyer email (on va créer le mail juste après)
         try {
