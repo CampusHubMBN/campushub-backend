@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Raise PHP upload limits to match app constraints (5 MB CV/avatar)
+RUN echo "upload_max_filesize = 6M\npost_max_size = 8M\nmemory_limit = 256M" \
+    > /usr/local/etc/php/conf.d/uploads.ini
+
 # Fix Apache MPM conflict — wipe all MPM modules, enable only prefork
 RUN find /etc/apache2/mods-enabled/ -name "mpm_*.load" -delete \
     && find /etc/apache2/mods-enabled/ -name "mpm_*.conf" -delete \
