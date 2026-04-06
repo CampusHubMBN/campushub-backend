@@ -224,4 +224,37 @@ class UserController extends Controller
             'message' => 'CV supprimé',
         ]);
     }
+
+    /**
+     * GET /users/search?q=prénom+nom
+     * Recherche d'utilisateurs pour démarrer une conversation.
+     * Authentifié uniquement — exclut l'utilisateur connecté.
+     * Retourne uniquement les champs nécessaires au chat (id, name, role, avatar).
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $q = trim($request->query('q', ''));
+
+        $query = User::with('info')
+            ->where('id', '!=', $request->user()->id) // exclude self
+            ->whereNull('suspended_at');               // exclude suspended accounts
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%");
+            });
+        }
+
+        $users = $query->orderBy('name')->limit(20)->get();
+
+        return response()->json([
+            'data' => $users->map(fn(User $u) => [
+                'id'         => $u->id,
+                'name'       => $u->name,
+                'role'       => $u->role,
+                'avatar_url' => $u->info?->avatar_url,
+            ]),
+        ]);
+    }
 }

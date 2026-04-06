@@ -69,6 +69,7 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::post('/invitations/{id}/resend', [InvitationController::class, 'resend']);
     Route::delete('/invitations/{id}', [InvitationController::class, 'destroy']);
     // User
+    Route::get('/users/search',       [UserController::class, 'search']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::patch('/users/{id}', [UserController::class, 'update']);
     Route::post('/users/{id}/avatar', [UserController::class, 'uploadAvatar']);
