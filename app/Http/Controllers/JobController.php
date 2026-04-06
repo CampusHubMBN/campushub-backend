@@ -40,7 +40,8 @@ class JobController extends Controller
             });
         }
 
-        $jobs = $query->paginate(20);
+        $perPage = min((int) $request->query('per_page', 20), 100);
+        $jobs = $query->paginate($perPage);
 
         return JobResource::collection($jobs);
     }
