@@ -5,6 +5,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -33,6 +34,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 401);
             }
             return redirect()->guest(route('login'));
+        });
+
+        // Fichier trop volumineux (dépasse upload_max_filesize PHP)
+        $exceptions->render(function (PostTooLargeException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Le fichier est trop volumineux. Taille maximale autorisée : 5 Mo.',
+                ], 422);
+            }
         });
     })
     // ->withMiddleware(function (Middleware $middleware) {
