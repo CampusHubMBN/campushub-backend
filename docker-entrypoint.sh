@@ -31,5 +31,8 @@ php artisan config:cache 2>&1 || echo "config:cache failed"
 echo "==> Running migrations..."
 php artisan migrate --force 2>&1 || echo "migrate failed"
 
+echo "==> Creating storage symlink..."
+php artisan storage:link --force 2>&1 || echo "storage:link failed"
+
 echo "==> Starting Apache + queue worker via supervisord..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
