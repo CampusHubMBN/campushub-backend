@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\RealtimeEvent;
 use App\Http\Resources\ArticleResource;
+use App\Mail\ArticlePublishedMail;
 use App\Models\Article;
+use App\Models\User;
 use App\Traits\PublishesRedisEvents;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class ArticleController extends Controller
@@ -170,6 +173,7 @@ class ArticleController extends Controller
                 'authorId'     => $article->author_id,
                 'authorName'   => $request->user()->name,
             ]);
+            $this->notifyStudentsAboutArticle($article, $request->user());
         }
 
         return response()->json([
@@ -225,6 +229,7 @@ class ArticleController extends Controller
                 'authorId'     => $article->author_id,
                 'authorName'   => $request->user()->name,
             ]);
+            $this->notifyStudentsAboutArticle($article->fresh(['author']), $request->user());
         }
 
         $article->load(['category', 'author.info']);
@@ -282,6 +287,7 @@ class ArticleController extends Controller
                 'authorId'     => $article->author_id,
                 'authorName'   => $request->user()->name,
             ]);
+            $this->notifyStudentsAboutArticle($article->fresh(['author']), $request->user());
         }
 
         return response()->json([
@@ -366,6 +372,31 @@ class ArticleController extends Controller
             403,
             'Action réservée aux rédacteurs'
         );
+    }
+
+    /**
+     * Envoie l'article publié par email aux étudiants et membres BDE.
+     * Déclenchée uniquement quand l'auteur est admin ou pedagogical.
+     */
+    private function notifyStudentsAboutArticle(Article $article, \App\Models\User $author): void
+    {
+        if (! in_array($author->role, ['admin', 'pedagogical'])) {
+            return;
+        }
+
+        User::whereIn('role', ['student', 'bde_member'])
+            ->select('id', 'email')
+            ->chunk(100, function ($users) use ($article) {
+                foreach ($users as $user) {
+                    try {
+                        Mail::to($user->email)->queue(new ArticlePublishedMail($article));
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning(
+                            "ArticlePublishedMail failed for {$user->email}: {$e->getMessage()}"
+                        );
+                    }
+                }
+            });
     }
 
     /**
